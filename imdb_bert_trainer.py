@@ -1,19 +1,18 @@
 import os
-os.environ['HF_ENDPOINT']="https://hf-mirror.com"
 import sys
 import logging
 import datasets
 import evaluate
+
 import pandas as pd
 import numpy as np
 
-from transformers import AutoModelForSequenceClassification, DebertaV2Tokenizer, DataCollatorWithPadding
+from transformers import BertTokenizerFast, BertForSequenceClassification, DataCollatorWithPadding
 from transformers import Trainer, TrainingArguments
-from peft import PromptTuningConfig, get_peft_model, TaskType
 from sklearn.model_selection import train_test_split
 
-train = pd.read_csv("../labeledTrainData.tsv", header=0, delimiter="\t", quoting=3)
-test = pd.read_csv("../testData.tsv", header=0, delimiter="\t", quoting=3)
+train = pd.read_csv("./labeledTrainData.tsv", header=0, delimiter="\t", quoting=3)
+test = pd.read_csv("./testData.tsv", header=0, delimiter="\t", quoting=3)
 
 if __name__ == '__main__':
     program = os.path.basename(sys.argv[0])
@@ -33,16 +32,11 @@ if __name__ == '__main__':
     val_dataset = datasets.Dataset.from_dict(val_dict)
     test_dataset = datasets.Dataset.from_dict(test_dict)
 
-    batch_size = 32
-
-    model_id = "microsoft/deberta-v3-xsmall"
-
-    tokenizer = DebertaV2Tokenizer.from_pretrained(model_id)
+    tokenizer = BertTokenizerFast.from_pretrained('bert-base-uncased')
 
 
     def preprocess_function(examples):
         return tokenizer(examples['text'], truncation=True)
-
 
     tokenized_train = train_dataset.map(preprocess_function, batched=True)
     tokenized_val = val_dataset.map(preprocess_function, batched=True)
@@ -50,20 +44,7 @@ if __name__ == '__main__':
 
     data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
 
-    model = AutoModelForSequenceClassification.from_pretrained(model_id)
-
-    # Define LoRA Config
-    peft_config = PromptTuningConfig(
-        num_virtual_tokens=10,
-        task_type=TaskType.SEQ_CLS
-    )
-
-    # prepare int-8 model for training
-    # model = prepare_model_for_int8_training(model)
-
-    # add LoRA adaptor
-    model = get_peft_model(model, peft_config)
-    model.print_trainable_parameters()
+    model = BertForSequenceClassification.from_pretrained('bert-base-uncased')
 
     metric = evaluate.load("accuracy")
 
@@ -77,8 +58,8 @@ if __name__ == '__main__':
     training_args = TrainingArguments(
         output_dir='./checkpoint',  # output directory
         num_train_epochs=3,  # total number of training epochs
-        per_device_train_batch_size=2,  # batch size per device during training
-        per_device_eval_batch_size=4,  # batch size for evaluation
+        per_device_train_batch_size=16,  # batch size per device during training
+        per_device_eval_batch_size=32,  # batch size for evaluation
         warmup_steps=500,  # number of warmup steps for learning rate scheduler
         weight_decay=0.01,  # strength of weight decay
         logging_dir='./logs',  # directory for storing logs
@@ -104,5 +85,5 @@ if __name__ == '__main__':
     print(test_pred)
 
     result_output = pd.DataFrame(data={"id": test["id"], "sentiment": test_pred})
-    result_output.to_csv("../result/deberta_prompt.csv", index=False, quoting=3)
+    result_output.to_csv("./result/bert_trainer.csv", index=False, quoting=3)
     logging.info('result saved!')
