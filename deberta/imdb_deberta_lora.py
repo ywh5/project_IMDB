@@ -15,6 +15,8 @@ from sklearn.model_selection import train_test_split
 
 train = pd.read_csv("../labeledTrainData.tsv", header=0, delimiter="\t", quoting=3)
 test = pd.read_csv("../testData.tsv", header=0, delimiter="\t", quoting=3)
+# train = train.head(100)
+# test = test.head(100)
 
 if __name__ == '__main__':
     program = os.path.basename(sys.argv[0])
@@ -51,8 +53,7 @@ if __name__ == '__main__':
 
     data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
 
-    model = AutoModelForSequenceClassification.from_pretrained(
-        model_id,
+    model = AutoModelForSequenceClassification.from_pretrained(model_id,
         # device_map="auto",
         # load_in_8bit=True
     )

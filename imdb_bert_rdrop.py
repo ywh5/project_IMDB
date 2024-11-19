@@ -3,14 +3,15 @@ os.environ['HF_ENDPOINT']="https://hf-mirror.com"
 import sys
 import logging
 import datasets
+import evaluate
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 import pandas as pd
 import numpy as np
-from pandas.core.computation.expressions import evaluate
 
+# from pandas.core.computation.expressions import evaluate
 from transformers import BertTokenizerFast, DataCollatorWithPadding
 from transformers import Trainer, TrainingArguments
 from transformers import BertPreTrainedModel, BertModel
@@ -20,7 +21,8 @@ from sklearn.model_selection import train_test_split
 
 train = pd.read_csv("./labeledTrainData.tsv", header=0, delimiter="\t", quoting=3)
 test = pd.read_csv("./testData.tsv", header=0, delimiter="\t", quoting=3)
-
+# train = train.head(100)
+# test = test.head(100)
 
 def KL(input, target, reduction="sum"):
     input = input.float()
@@ -55,7 +57,7 @@ class BertScratch(BertPreTrainedModel):
         kl_output = self.dropout(kl_output)
         kl_logits = self.classifier(kl_output)
 
-        loss = None
+        total_loss = None  #之前是loss导致的报错
         if labels is not None:
             loss_fct = nn.CrossEntropyLoss()
             loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
