@@ -1,4 +1,5 @@
 import os
+os.environ['HF_ENDPOINT']="https://hf-mirror.com"
 import sys
 import logging
 import datasets
@@ -9,11 +10,11 @@ import numpy as np
 
 from transformers import AutoModelForSequenceClassification, DebertaV2Tokenizer, DataCollatorWithPadding
 from transformers import Trainer, TrainingArguments
-from peft import PromptEncoderConfig, get_peft_model, TaskType, prepare_model_for_int8_training
+from peft import PromptEncoderConfig, get_peft_model, TaskType #prepare_model_for_int8_training
 from sklearn.model_selection import train_test_split
 
-train = pd.read_csv("./corpus/imdb/labeledTrainData.tsv", header=0, delimiter="\t", quoting=3)
-test = pd.read_csv("./corpus/imdb/testData.tsv", header=0, delimiter="\t", quoting=3)
+train = pd.read_csv("../labeledTrainData.tsv", header=0, delimiter="\t", quoting=3)
+test = pd.read_csv("../testData.tsv", header=0, delimiter="\t", quoting=3)
 
 if __name__ == '__main__':
     program = os.path.basename(sys.argv[0])
@@ -33,15 +34,15 @@ if __name__ == '__main__':
     val_dataset = datasets.Dataset.from_dict(val_dict)
     test_dataset = datasets.Dataset.from_dict(test_dict)
 
-    batch_size = 32
+    batch_size = 1
 
-    model_id = "microsoft/deberta-v2-xxlarge"
+    model_id = "microsoft/deberta-v3-xsmall"
 
     tokenizer = DebertaV2Tokenizer.from_pretrained(model_id)
 
 
     def preprocess_function(examples):
-        return tokenizer(examples['text'], truncation=True)
+        return tokenizer(examples['text'], truncation=True, padding='max_length', max_length=510)
 
 
     tokenized_train = train_dataset.map(preprocess_function, batched=True)
@@ -105,5 +106,5 @@ if __name__ == '__main__':
     print(test_pred)
 
     result_output = pd.DataFrame(data={"id": test["id"], "sentiment": test_pred})
-    result_output.to_csv("./result/deberta_lora_int8.csv", index=False, quoting=3)
+    result_output.to_csv("../result/deberta_ptuning.csv", index=False, quoting=3)
     logging.info('result saved!')
